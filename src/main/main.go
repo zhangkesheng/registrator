@@ -14,6 +14,8 @@ import (
 	"log"
 	"github.com/hashicorp/consul/api"
 	"strconv"
+	"net/http"
+	"github.com/zhangkesheng/registrator/src/main/env"
 )
 
 const (
@@ -28,7 +30,7 @@ var consulClient, consulClientError = api.NewClient(api.DefaultConfig())
 var cli, dockerClientError = client.NewEnvClient()
 
 func main() {
-	os.Setenv("IGNORE_CONTAINERS", "weaveworks/weaveexec")
+	env.Set_env()
 	if consulClientError != nil {
 		panic(consulClientError)
 	}
@@ -76,20 +78,23 @@ func eventsHandler(message events.Message) {
 				// get container env
 				envMap := GetContainerEnvMap(container)
 				if CheckContainerEnv(envMap) {
-					fabioTag := fmt.Sprintf("urlprefix-/%s strip=/%s", envMap[SERVICE_NAME], envMap[SERVICE_NAME])
-					if len(envMap[SERVICE_SOURCE]) > 0 {
-						fabioTag = fmt.Sprintf("urlprefix-/%s", envMap[SERVICE_SOURCE])
+					heathUrl := GetContainerHealthCheckUrl(message.From, containerIp, envMap[HEALTH_CHECK_URL], envMap[SERVICE_PORT])
+					if CheckServiceHealthy(heathUrl) {
+						fabioTag := fmt.Sprintf("urlprefix-/%s strip=/%s", envMap[SERVICE_NAME], envMap[SERVICE_NAME])
+						if len(envMap[SERVICE_SOURCE]) > 0 {
+							fabioTag = fmt.Sprintf("urlprefix-/%s", envMap[SERVICE_SOURCE])
+						}
+						tags := []string{fabioTag, "dev"}
+						ConsulCreate(
+							container.ID,
+							container.Name,
+							containerIp,
+							envMap[SERVICE_PORT],
+							tags,
+							heathUrl,
+							os.Getenv("DEFAULT_CONSUL_INTERVAL"),
+						)
 					}
-					tags := []string{fabioTag, "dev"}
-					ConsulCreate(
-						container.ID,
-						container.Name,
-						containerIp,
-						envMap[SERVICE_PORT],
-						tags,
-						GetContainerHealthCheckUrl(message.From, containerIp, envMap[HEALTH_CHECK_URL], envMap[SERVICE_PORT]),
-						"10s",
-					)
 				}
 			}
 		}
@@ -166,6 +171,16 @@ func printCmdLog(readCloser io.ReadCloser) {
 // if response status is 200, it means service is healthy
 // if not, check again, the limit times get by env 'SERVICE_CHECK_TIMES_MAX'
 func CheckServiceHealthy(healthUrl string) bool {
+	serviceCheckTimesMax, _ := strconv.Atoi(os.Getenv("SERVICE_CHECK_TIMES_MAX"))
+	for i := 0; i < serviceCheckTimesMax; i++ {
+		resp, err := http.Get(healthUrl)
+		if err != nil {
+			log.Printf("get services healthy [%s] error.%v", healthUrl, err)
+		}
+		if resp.StatusCode == http.StatusOK {
+			return true
+		}
+	}
 	return false
 }
 
