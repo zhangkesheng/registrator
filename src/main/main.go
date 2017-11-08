@@ -24,7 +24,10 @@ const (
 )
 
 var ctx = context.Background()
-var consulClient, consulClientError = api.NewClient(api.DefaultConfig())
+var consulClient, consulClientError = api.NewClient(&api.Config{
+	// TODO use env
+	Address: "192.168.33.34:8500",
+})
 var cli, dockerClientError = client.NewEnvClient()
 
 func main() {
@@ -78,20 +81,7 @@ func eventsHandler(message events.Message) {
 					heathUrl := GetContainerHealthCheckUrl(message.From, containerIp, envMap[HEALTH_CHECK_URL], envMap[SERVICE_PORT])
 					log.Printf("service heathUrl: %s", heathUrl)
 					if CheckServiceHealthy(heathUrl) {
-						fabioTag := fmt.Sprintf("urlprefix-/%s strip=/%s", envMap[SERVICE_NAME], envMap[SERVICE_NAME])
-						if len(envMap[SERVICE_SOURCE]) > 0 {
-							fabioTag = fmt.Sprintf("urlprefix-/%s", envMap[SERVICE_SOURCE])
-						}
-						tags := []string{fabioTag, "dev"}
-						ConsulCreate(
-							container.ID,
-							container.Name,
-							containerIp,
-							envMap[SERVICE_PORT],
-							tags,
-							heathUrl,
-							os.Getenv("DEFAULT_CONSUL_INTERVAL"),
-						)
+						ConsulCreate(container, envMap, containerIp, heathUrl)
 					}
 				}
 			}
@@ -155,21 +145,30 @@ func CheckServiceHealthy(healthUrl string) bool {
 }
 
 // create consul service
-func ConsulCreate(containerId string, containerName string, ip string, port string, tags []string, healthUrl string, interval string) {
-	consulClient.Agent().ServiceDeregister(containerId)
-	portInt, _ := strconv.Atoi(port)
+func ConsulCreate(container types.ContainerJSON, envMap map[string]string, containerIp string, healthUrl string) {
+	fabioTag := fmt.Sprintf("urlprefix-/%s strip=/%s", envMap[SERVICE_NAME], envMap[SERVICE_NAME])
+	if len(envMap[SERVICE_SOURCE]) > 0 {
+		fabioTag = fmt.Sprintf("urlprefix-/%s", envMap[SERVICE_SOURCE])
+	}
+	tags := []string{fabioTag, "dev"}
+	consulClient.Agent().ServiceDeregister(container.ID)
+	portInt, _ := strconv.Atoi(envMap[SERVICE_PORT])
 	consulError := consulClient.Agent().ServiceRegister(&api.AgentServiceRegistration{
-		ID:      containerId,
-		Name:    containerName,
-		Address: ip,
+		ID:      container.ID,
+		Name:    container.Name,
+		Address: containerIp,
 		Port:    portInt,
 		Tags:    tags,
 		Check: &api.AgentServiceCheck{
 			HTTP:     healthUrl,
-			Interval: interval,
+			Interval: os.Getenv("DEFAULT_CONSUL_INTERVAL"),
 		},
 	})
-	log.Printf("register error: %s", consulError.Error())
+	if consulError != nil {
+		log.Printf("register error: %s", consulError.Error())
+	} else {
+		log.Printf("container [%s] register consul success.", containerName)
+	}
 }
 
 // deregister consul service
