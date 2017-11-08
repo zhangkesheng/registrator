@@ -1,0 +1,2 @@
+# registrator
+docker service registrator
