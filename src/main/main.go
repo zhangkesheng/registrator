@@ -9,8 +9,6 @@ import (
 	"os"
 	"strings"
 	"os/exec"
-	"io"
-	"bufio"
 	"log"
 	"github.com/hashicorp/consul/api"
 	"strconv"
@@ -51,13 +49,13 @@ func main() {
 
 // handle docker events
 func eventsHandler(message events.Message) {
-	fmt.Printf("event message: %s, %s, %s, %s;\n", message.ID, message.Action, message.From, message.Type)
 	// message id, message type is not null and type is container, should handle this event
 	if len(message.ID) > 0 && len(message.Type) > 0 && message.Type == "container" && !CheckContainerIgnore(message.From) {
+		fmt.Printf("event message: %s, %s, %s, %s;\n", message.ID, message.Action, message.From, message.Type)
 		// delete weave attach and deregister consul service where container stop
 		if "stop" == message.Action {
-			cmd := exec.Command("weave", "detach", message.ID)
-			cmdResult := CmdResultHandler(cmd)
+			out, err := exec.Command("weave", "detach", message.ID).CombinedOutput()
+			cmdResult := CmdResultHandler(out, err)
 			containerIp := cmdResult[0]
 			log.Printf("weave ip [%s] detach.\n", containerIp)
 			container := GetContainerConfig(message.ID)
@@ -68,17 +66,17 @@ func eventsHandler(message events.Message) {
 			}
 		} else if "start" == message.Action {
 			// weave attach and register consul service where container start
-			cmd := exec.Command("weave", "attach", message.ID)
-			log.Println(cmd)
-			cmdResult := CmdResultHandler(cmd)
+			out, err := exec.Command("weave", "attach", message.ID).CombinedOutput()
+			cmdResult := CmdResultHandler(out, err)
 			containerIp := cmdResult[0]
-			log.Printf("weave ip [%s] detach.\n", containerIp)
+			log.Printf("weave ip [%s] attach.\n", containerIp)
 			container := GetContainerConfig(message.ID)
 			if len(container.ID) > 0 {
 				// get container env
 				envMap := GetContainerEnvMap(container)
 				if CheckContainerEnv(envMap) {
 					heathUrl := GetContainerHealthCheckUrl(message.From, containerIp, envMap[HEALTH_CHECK_URL], envMap[SERVICE_PORT])
+					log.Printf("service heathUrl: %s", heathUrl)
 					if CheckServiceHealthy(heathUrl) {
 						fabioTag := fmt.Sprintf("urlprefix-/%s strip=/%s", envMap[SERVICE_NAME], envMap[SERVICE_NAME])
 						if len(envMap[SERVICE_SOURCE]) > 0 {
@@ -109,8 +107,10 @@ func eventsErrorHandler(error error) {
 
 // check container is ignore
 func CheckContainerIgnore(from string) bool {
-	envIgnoreContainers := os.Getenv("IGNORE_CONTAINERS")
-	log.Printf("envIgnoreContainers: %s\n", envIgnoreContainers)
+	envIgnoreContainers := os.Getenv("IGNORE_CONTAINER")
+	if len(envIgnoreContainers) == 0 {
+		return false
+	}
 	if strings.Contains(envIgnoreContainers, ",") {
 		containers := strings.Split(envIgnoreContainers, ",")
 		for _, v := range containers {
@@ -124,47 +124,16 @@ func CheckContainerIgnore(from string) bool {
 	return false
 }
 
-func CmdResultHandler(cmd *exec.Cmd) []string {
-	stdout, err := cmd.StdoutPipe()
+func CmdResultHandler(out []byte, err error) []string {
 	if err != nil {
-		panic(err)
+		log.Printf("weave cmd error: %s", err.Error())
 	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		panic(err)
+	log.Printf("weave cmd result: %s", string(out))
+	resultList := strings.Split(string(out), " \n")
+	for i := 0; i < len(resultList); i++ {
+		resultList[i] = strings.Replace(resultList[i], "\n", "", -1)
 	}
-	cmd.Start()
-	printCmdLog(stderr)
-	cmd.Wait()
-	return GetWeaveCmdResult(stdout)
-}
-
-func GetWeaveCmdResult(readCloser io.ReadCloser) []string {
-	reader := bufio.NewReader(readCloser)
-	var result []string
-	var i = 0
-	for {
-		line, err2 := reader.ReadString('\n')
-		if err2 != nil || io.EOF == err2 {
-			continue
-		}
-		log.Printf("weave cmd result: %s\n", line)
-		result[i] = line
-		i++
-		break
-	}
-	return result
-}
-
-func printCmdLog(readCloser io.ReadCloser) {
-	reader := bufio.NewReader(readCloser)
-	for {
-		line, err2 := reader.ReadString('\n')
-		if err2 != nil || io.EOF == err2 {
-			break
-		}
-		fmt.Print(line)
-	}
+	return resultList
 }
 
 // check container healthy
@@ -172,11 +141,12 @@ func printCmdLog(readCloser io.ReadCloser) {
 // if not, check again, the limit times get by env 'SERVICE_CHECK_TIMES_MAX'
 func CheckServiceHealthy(healthUrl string) bool {
 	serviceCheckTimesMax, _ := strconv.Atoi(os.Getenv("SERVICE_CHECK_TIMES_MAX"))
-	for i := 0; i < serviceCheckTimesMax; i++ {
+	for i := 1; i < serviceCheckTimesMax; i++ {
 		resp, err := http.Get(healthUrl)
 		if err != nil {
 			log.Printf("get services healthy [%s] error.%v", healthUrl, err)
 		}
+		log.Printf("%s times get service healthy. status: %s", i, resp.StatusCode)
 		if resp.StatusCode == http.StatusOK {
 			return true
 		}
@@ -186,6 +156,7 @@ func CheckServiceHealthy(healthUrl string) bool {
 
 // create consul service
 func ConsulCreate(containerId string, containerName string, ip string, port string, tags []string, healthUrl string, interval string) {
+	consulClient.Agent().ServiceDeregister(containerId)
 	portInt, _ := strconv.Atoi(port)
 	consulError := consulClient.Agent().ServiceRegister(&api.AgentServiceRegistration{
 		ID:      containerId,
@@ -219,10 +190,12 @@ func GetContainerConfig(containerId string) types.ContainerJSON {
 func GetContainerEnvMap(container types.ContainerJSON) map[string]string {
 	envMap := make(map[string]string)
 	config := container.Config
-	envs := config.Env
-	if envs != nil && len(envs) > 0 {
-		for _, v := range envs {
+	configEnv := config.Env
+	log.Printf("configEnv: %s", configEnv)
+	if configEnv != nil && len(configEnv) > 0 {
+		for _, v := range configEnv {
 			index := strings.Index(v, "=")
+			log.Printf("env %s: ", v)
 			envMap[v[:index]] = v[index+1:]
 		}
 	}
@@ -231,6 +204,7 @@ func GetContainerEnvMap(container types.ContainerJSON) map[string]string {
 
 // check register env
 func CheckContainerEnv(envMap map[string]string) bool {
+	log.Printf("service envs: %s\n", envMap)
 	if envMap == nil || len(envMap) <= 0 {
 		log.Println("services envs is null.")
 		return false
@@ -239,7 +213,7 @@ func CheckContainerEnv(envMap map[string]string) bool {
 		log.Println("services service port is null.")
 		return false
 	}
-	if _, err := strconv.Atoi(envMap[SERVICE_PORT]); err == nil {
+	if _, err := strconv.Atoi(envMap[SERVICE_PORT]); err != nil {
 		log.Println("services service port is not int.")
 		return false
 	}
