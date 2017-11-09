@@ -1,8 +1,8 @@
-package env
+package config
 
 import "os"
 
-// set env
+// set config
 func Set_env() {
 	Init()
 	if envMap != nil {

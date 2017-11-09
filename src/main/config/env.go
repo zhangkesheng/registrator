@@ -1,4 +1,4 @@
-package env
+package config
 
 const (
 	ignoreContainer = "daocloud,docker,weave"
