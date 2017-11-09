@@ -93,7 +93,7 @@ func CmdResultHandler(out []byte, err error) []string {
 		log.Printf("weave cmd error: %s", err.Error())
 	}
 	log.Printf("weave cmd result: %s", string(out))
-	resultList := strings.Split(string(out), " \n")
+	resultList := strings.Split(string(out), "\n")
 	for i := 0; i < len(resultList); i++ {
 		resultList[i] = strings.Replace(resultList[i], "\n", "", -1)
 	}
