@@ -7,10 +7,10 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/zhangkesheng/registrator/weave"
 	"github.com/zhangkesheng/registrator/consul"
-	"github.com/zhangkesheng/registrator/continer"
 	"fmt"
 	"log"
 	"github.com/zhangkesheng/registrator/services"
+	container2 "github.com/zhangkesheng/registrator/container"
 )
 
 var ctx = context.Background()
@@ -51,7 +51,7 @@ func initDockerContainer(ctx context.Context, cli client.Client) {
 	}
 	for _, container := range list {
 		containerID := container.ID
-		consulService, err := continer.GetConsulService(containerID)
+		consulService, err := container2.GetConsulService(containerID)
 		if err != nil {
 			fmt.Println(err)
 		}
