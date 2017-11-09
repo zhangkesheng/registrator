@@ -6,6 +6,10 @@ import (
 	"context"
 	"github.com/docker/docker/client"
 	"github.com/zhangkesheng/registrator/services"
+	"github.com/zhangkesheng/registrator/weave"
+	"github.com/zhangkesheng/registrator/consul"
+	"github.com/zhangkesheng/registrator/continer"
+	"fmt"
 )
 
 var ctx = context.Background()
@@ -16,6 +20,7 @@ func main() {
 	if dockerClientError != nil {
 		panic(dockerClientError)
 	}
+	go initDockerContainer(ctx, *cli)
 	channel, chanErrs := cli.Events(ctx, types.EventsOptions{
 	})
 	for {
@@ -25,5 +30,44 @@ func main() {
 		case m := <-channel:
 			go services.EventsHandler(m)
 		}
+	}
+}
+
+func initDockerContainer(ctx context.Context, cli client.Client) {
+	list, err := cli.ContainerList(ctx, types.ContainerListOptions{
+	})
+	if err != nil {
+		println(err)
+	}
+	consulMap, err := consul.AgentService()
+	if err != nil {
+		println(err)
+	}
+	weaveMap, err := weave.GetWeaveMap()
+	if err != nil {
+		println(err)
+	}
+	for _, container := range list {
+		containerID := container.ID
+		consulService, err := continer.GetConsulService(containerID);
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		if container.State != "running" {
+			continue
+		}
+		//当consul中存在此镜像
+		if consulMap[containerID] != nil {
+			if weaveMap[containerID] != "" {
+				//todo 判断ip是否相同
+				continue
+			}
+		}
+		if weaveMap[containerID] == "" {
+			weaveMap[containerID] = "todo"
+		}
+		consulService.ServiceIp = weaveMap[containerID]
+		consul.Register(consulService)
 	}
 }
