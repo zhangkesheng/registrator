@@ -43,3 +43,7 @@ func DeRegister(serviceID string) error {
 	err := consulClient.Agent().ServiceDeregister(serviceID)
 	return err
 }
+
+func AgentService() (map[string]*api.AgentService, error) {
+	return consulClient.Agent().Services()
+}
