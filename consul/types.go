@@ -1,10 +1,10 @@
 package consul
 
-type consulNode struct {
-	ContainerID   string
+type ConsulService struct {
+	ServiceID     string
 	HealthUrl     string
-	ContainerIp   string
+	ServiceIp     string
 	ServiceName   string
 	ServiceSource string
-	ServicePort   string
+	ServicePort   int
 }
