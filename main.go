@@ -1,11 +1,11 @@
-package main
+package registrator
 
 import (
 	"github.com/docker/docker/api/types"
-	"github.com/zhangkesheng/registrator/src/main/config"
+	"github.com/zhangkesheng/registrator/config"
 	"context"
 	"github.com/docker/docker/client"
-	"github.com/zhangkesheng/registrator/src/main/services"
+	"github.com/zhangkesheng/registrator/services"
 )
 
 var ctx = context.Background()
