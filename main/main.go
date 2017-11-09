@@ -1,4 +1,4 @@
-package registrator
+package main
 
 import (
 	"github.com/docker/docker/api/types"
