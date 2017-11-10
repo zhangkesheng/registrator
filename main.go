@@ -65,6 +65,9 @@ func initDockerContainer(ctx context.Context, cli client.Client) {
 			weaveMap[containerID] = weave.Attach(consulService)
 		}
 		consulService.ServiceIp = weaveMap[containerID]
-		consul.Register(consulService)
+		err = consul.Register(consulService)
+		if err != nil {
+			log.Printf(err.Error())
+		}
 	}
 }

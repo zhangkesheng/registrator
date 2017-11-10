@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"log"
+	"errors"
 )
 
 var consulClient, _ = api.NewClient(&api.Config{
@@ -13,6 +14,15 @@ var consulClient, _ = api.NewClient(&api.Config{
 })
 
 func Register(consulService ConsulService) error {
+	if len(consulService.ServiceName) == 0 {
+		return errors.New("consul register error. missing params ServiceName")
+	}
+	if len(consulService.ServiceIp) == 0 {
+		return errors.New("consul register error. missing params ServiceIp")
+	}
+	if len(consulService.HealthUrl) == 0 {
+		return errors.New("consul register error. missing params HealthUrl")
+	}
 	fabioTag := fmt.Sprintf("urlprefix-/%s strip=/%s", consulService.ServiceName, consulService.ServiceName)
 	if len(consulService.ServiceSource) > 0 {
 		fabioTag = fmt.Sprintf("urlprefix-/%s", consulService.ServiceSource)
