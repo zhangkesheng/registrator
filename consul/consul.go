@@ -13,7 +13,6 @@ var consulClient, _ = api.NewClient(&api.Config{
 })
 
 func Register(consulService ConsulService) error {
-
 	fabioTag := fmt.Sprintf("urlprefix-/%s strip=/%s", consulService.ServiceName, consulService.ServiceName)
 	if len(consulService.ServiceSource) > 0 {
 		fabioTag = fmt.Sprintf("urlprefix-/%s", consulService.ServiceSource)

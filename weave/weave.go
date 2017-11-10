@@ -47,3 +47,27 @@ func cmdResultHandler(out []byte, err error) []string {
 	}
 	return resultList
 }
+
+func CheckWeaveCIDRAttached(ip string) bool {
+	weaveMap, err := GetWeaveAttachIpList()
+	if err != nil {
+		log.Printf("weave ps error. message: %s", err.Error())
+	}
+	if len(weaveMap[ip]) > 0 {
+		return true
+	}
+	return false
+}
+
+func GetWeaveAttachIpList() (map[string]string, error) {
+	out, err := exec.Command("weave", "ps").CombinedOutput()
+	cmdResult := cmdResultHandler(out, err)
+	result := make(map[string]string)
+	for _, v := range cmdResult {
+		cmdArr := strings.Split(v, " ")
+		if len(cmdArr) == 3 {
+			result[cmdArr[2]] = cmdArr[0]
+		}
+	}
+	return result, nil
+}

@@ -9,6 +9,8 @@ import (
 	"github.com/docker/docker/api/types"
 	"strconv"
 	"fmt"
+	"github.com/zhangkesheng/registrator/weave"
+	"errors"
 )
 
 var cli, _ = client.NewEnvClient()
@@ -17,29 +19,34 @@ var ctx = context.Background()
 func GetConsulService(containerID string) (service consul.ConsulService, err error) {
 	containerDetails, err := cli.ContainerInspect(ctx, containerID)
 	if err != nil {
-		println(err)
+		log.Printf("get container details error.%s", err.Error())
+		return consul.ConsulService{}, err
 	}
-	envmap := GetContainerEnvMap(containerDetails)
-	servicePort := DEFAULT_PORT;
+	envMap := GetContainerEnvMap(containerDetails)
+	servicePort := DEFAULT_PORT
 	serviceIp := ""
-	if envmap[SERVICE_PORT] != "" {
-		servicePort, err = strconv.Atoi(envmap[SERVICE_PORT])
+	if envMap[SERVICE_PORT] != "" {
+		servicePort, err = strconv.Atoi(envMap[SERVICE_PORT])
 		if err != nil {
 			log.Println("Illegal service port")
 			servicePort = DEFAULT_PORT
 		}
 	}
-	if envmap[WEAVE_CIDR] != "" {
-		serviceIp = strings.Split(envmap[WEAVE_CIDR], "/")[0]
+	if envMap[WEAVE_CIDR] != "" {
+		// check WEAVE_CIDR attach status
+		if !weave.CheckWeaveCIDRAttached(envMap[WEAVE_CIDR]) {
+			return consul.ConsulService{}, errors.New(fmt.Sprintf("WEAVE_CIDR [%s] is attached.", envMap[WEAVE_CIDR]))
+		}
+		serviceIp = envMap[WEAVE_CIDR]
 	}
-	healthUrl := fmt.Sprintf("%s/%s", servicePort, envmap[HEALTH_CHECK_URL])
+	healthUrl := fmt.Sprintf("%s/%s", servicePort, envMap[HEALTH_CHECK_URL])
 	return consul.ConsulService{
 		ServiceIp:     serviceIp,
 		ServiceID:     containerDetails.ID,
-		ServiceName:   envmap[SERVICE_NAME],
+		ServiceName:   envMap[SERVICE_NAME],
 		ServicePort:   servicePort,
 		HealthUrl:     healthUrl,
-		ServiceSource: envmap[SERVICE_SOURCE],
+		ServiceSource: envMap[SERVICE_SOURCE],
 	}, nil
 }
 
@@ -52,7 +59,13 @@ func GetContainerEnvMap(container types.ContainerJSON) map[string]string {
 		for _, v := range configEnv {
 			index := strings.Index(v, "=")
 			log.Printf("config %s: ", v)
-			envMap[v[:index]] = v[index+1:]
+			if index < 0 {
+				envMap[v] = ""
+			} else if (index + 1) == len(v) {
+				envMap[v[:index]] = ""
+			} else {
+				envMap[v[:index]] = v[index+1:]
+			}
 		}
 	}
 	return envMap
