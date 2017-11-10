@@ -1,6 +1,7 @@
 package container
 
 const (
+	WEAVE_CIDR       = "WEAVE_CIDR"
 	DEFAULT_PORT     = 80
 	SERVICE_PORT     = "SERVER_PORT"
 	SERVICE_NAME     = "SERVICE_NAME"

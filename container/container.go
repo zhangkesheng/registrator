@@ -7,6 +7,8 @@ import (
 	"log"
 	"strings"
 	"github.com/docker/docker/api/types"
+	"strconv"
+	"fmt"
 )
 
 var cli, _ = client.NewEnvClient()
@@ -19,16 +21,24 @@ func GetConsulService(containerID string) (service consul.ConsulService, err err
 	}
 	envmap := GetContainerEnvMap(containerDetails)
 	servicePort := DEFAULT_PORT;
+	serviceIp := ""
 	if envmap[SERVICE_PORT] != "" {
-		//todo
+		servicePort, err = strconv.Atoi(envmap[SERVICE_PORT])
+		if err != nil {
+			log.Println("Illegal service port")
+			servicePort = DEFAULT_PORT
+		}
 	}
-
-	//todo 参数校验和初始化
+	if envmap[WEAVE_CIDR] != "" {
+		serviceIp = strings.Split(envmap[WEAVE_CIDR], "/")[0]
+	}
+	healthUrl := fmt.Sprintf("%s/%s", servicePort, envmap[HEALTH_CHECK_URL])
 	return consul.ConsulService{
+		ServiceIp:     serviceIp,
 		ServiceID:     containerDetails.ID,
 		ServiceName:   envmap[SERVICE_NAME],
 		ServicePort:   servicePort,
-		HealthUrl:     envmap[HEALTH_CHECK_URL],
+		HealthUrl:     healthUrl,
 		ServiceSource: envmap[SERVICE_SOURCE],
 	}, nil
 }

@@ -27,7 +27,7 @@ func Register(consulService ConsulService) error {
 		Port:    consulService.ServicePort,
 		Tags:    tags,
 		Check: &api.AgentServiceCheck{
-			HTTP:     consulService.HealthUrl,
+			HTTP:     fmt.Sprintf("http://%s:%s", consulService.ServiceIp, consulService.HealthUrl),
 			Interval: os.Getenv("DEFAULT_CONSUL_INTERVAL"),
 		},
 	})
