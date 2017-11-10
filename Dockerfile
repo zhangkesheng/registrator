@@ -4,6 +4,8 @@ COPY . /go/src/github.com/zhangkesheng/registrator
 
 ENV CGO_ENABLED=0
 
+RUN go get -u github.com/golang/dep/cmd/dep
+
 RUN cd /go/src/github.com/zhangkesheng/registrator \
  && dep ensure \
  && go build
