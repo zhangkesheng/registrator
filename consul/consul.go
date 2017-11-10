@@ -28,7 +28,7 @@ func Register(consulService ConsulService) error {
 		fabioTag = fmt.Sprintf("urlprefix-/%s", consulService.ServiceSource)
 	}
 	tags := []string{fabioTag, "dev"}
-	consulClient.Agent().ServiceDeregister(consulService.ServiceID)
+	DeRegister(consulService.ServiceID)
 	consulError := consulClient.Agent().ServiceRegister(&api.AgentServiceRegistration{
 		ID:      consulService.ServiceID,
 		Name:    consulService.ServiceName,
@@ -50,6 +50,9 @@ func Register(consulService ConsulService) error {
 
 func DeRegister(serviceID string) error {
 	err := consulClient.Agent().ServiceDeregister(serviceID)
+	if err != nil {
+		log.Printf("consul deregister error: %s", err.Error())
+	}
 	return err
 }
 

@@ -39,7 +39,7 @@ func GetConsulService(containerID string) (service consul.ConsulService, err err
 		}
 		serviceIp = envMap[WEAVE_CIDR]
 	}
-	healthUrl := fmt.Sprintf("%s/%s", servicePort, envMap[HEALTH_CHECK_URL])
+	healthUrl := fmt.Sprintf("%d/%s", servicePort, envMap[HEALTH_CHECK_URL])
 	return consul.ConsulService{
 		ServiceIp:     serviceIp,
 		ServiceID:     containerDetails.ID,
