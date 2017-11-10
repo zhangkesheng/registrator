@@ -19,6 +19,10 @@ func GetConsulService(containerID string) (service consul.ConsulService, err err
 	}
 	envmap := GetContainerEnvMap(containerDetails)
 	servicePort := DEFAULT_PORT;
+	if envmap[SERVICE_PORT] != "" {
+		//todo
+	}
+
 	//todo 参数校验和初始化
 	return consul.ConsulService{
 		ServiceID:     containerDetails.ID,

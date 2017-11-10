@@ -7,10 +7,8 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/zhangkesheng/registrator/weave"
 	"github.com/zhangkesheng/registrator/consul"
-	"fmt"
 	"log"
-	"github.com/zhangkesheng/registrator/services"
-	container2 "github.com/zhangkesheng/registrator/container"
+	"github.com/zhangkesheng/registrator/container"
 )
 
 var ctx = context.Background()
@@ -27,9 +25,9 @@ func main() {
 	for {
 		select {
 		case e := <-chanErrs:
-			services.EventsErrorHandler(e)
+			container.EventsErrorHandler(e)
 		case m := <-channel:
-			go services.EventsHandler(m)
+			go container.EventsHandler(m)
 		}
 	}
 }
@@ -49,25 +47,22 @@ func initDockerContainer(ctx context.Context, cli client.Client) {
 	if err != nil {
 		println(err)
 	}
-	for _, container := range list {
-		containerID := container.ID
-		consulService, err := container2.GetConsulService(containerID)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		if container.State != "running" {
+	for _, c := range list {
+		if c.State != "running" {
 			continue
 		}
-		//当consul中存在此镜像
+		containerID := c.ID
+		consulService, err := container.GetConsulService(containerID)
+		if err != nil {
+			log.Println(err)
+		}
 		if consulMap[containerID] != nil {
 			if weaveMap[containerID] != "" {
-				//todo 判断ip是否相同
 				continue
 			}
 		}
 		if weaveMap[containerID] == "" {
-			weaveMap[containerID] = "todo"
+			weaveMap[containerID] = weave.Attach(consulService)
 		}
 		consulService.ServiceIp = weaveMap[containerID]
 		consul.Register(consulService)

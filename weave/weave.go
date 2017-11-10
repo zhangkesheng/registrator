@@ -2,15 +2,15 @@ package weave
 
 import (
 	"os/exec"
-	"github.com/zhangkesheng/registrator/services"
 	"fmt"
 	"strings"
+	"log"
 	"github.com/zhangkesheng/registrator/consul"
 )
 
 func GetWeaveMap() (map[string]string, error) {
 	out, err := exec.Command("weave", "ps").CombinedOutput()
-	cmdResult := services.CmdResultHandler(out, err)
+	cmdResult := cmdResultHandler(out, err)
 	result := make(map[string]string)
 	for _, v := range cmdResult {
 		fmt.Println("=====", v)
@@ -22,6 +22,30 @@ func GetWeaveMap() (map[string]string, error) {
 	return result, nil
 }
 
-func WeaveAttach(service consul.ConsulService) string {
-	return ""
+func Attach(consulService consul.ConsulService) string {
+	if consulService.ServiceIp == "" {
+		out, err := exec.Command("weave", "attach", consulService.ServiceID).CombinedOutput()
+		cmdResult := cmdResultHandler(out, err)
+		return cmdResult[0]
+	}
+	out, err := exec.Command("weave", "attach", consulService.ServiceID, consulService.ServiceIp).CombinedOutput()
+	cmdResult := cmdResultHandler(out, err)
+	return cmdResult[0]
+}
+
+func Detach(containerID string) string {
+	out, err := exec.Command("weave", "detach", containerID).CombinedOutput()
+	cmdResult := cmdResultHandler(out, err)
+	return cmdResult[0]
+}
+func cmdResultHandler(out []byte, err error) []string {
+	if err != nil {
+		log.Printf("weave cmd error: %s", err.Error())
+	}
+	log.Printf("weave cmd result: %s", string(out))
+	resultList := strings.Split(string(out), "\n")
+	for i := 0; i < len(resultList); i++ {
+		resultList[i] = strings.Replace(resultList[i], "\n", "", -1)
+	}
+	return resultList
 }
