@@ -15,8 +15,8 @@ var ctx = context.Background()
 var cli, dockerClientError = client.NewEnvClient()
 
 func main() {
-	config.CommonCfg = config.LoadCommonConf();
-	config.Set_env()
+	config.CommonCfg = config.LoadCommonConf()
+	consul.InitConsul()
 	if dockerClientError != nil {
 		panic(dockerClientError)
 	}

@@ -8,9 +8,13 @@ import (
 	"github.com/zhangkesheng/registrator/config"
 )
 
-var consulClient, _ = api.NewClient(&api.Config{
-	Address: config.CommonCfg.ConsulHttpAddr,
-})
+var client *api.Client
+
+func InitConsul() {
+	client, _ = api.NewClient(&api.Config{
+		Address: config.CommonCfg.ConsulHttpAddr,
+	})
+}
 
 func Register(consulService ConsulService) error {
 	if len(consulService.ServiceName) == 0 {
@@ -28,7 +32,7 @@ func Register(consulService ConsulService) error {
 	}
 	tags := []string{fabioTag, "dev"}
 	DeRegister(consulService.ServiceID)
-	consulError := consulClient.Agent().ServiceRegister(&api.AgentServiceRegistration{
+	consulError := client.Agent().ServiceRegister(&api.AgentServiceRegistration{
 		ID:      consulService.ServiceID,
 		Name:    consulService.ServiceName,
 		Address: consulService.ServiceID,
@@ -48,7 +52,7 @@ func Register(consulService ConsulService) error {
 }
 
 func DeRegister(serviceID string) error {
-	err := consulClient.Agent().ServiceDeregister(serviceID)
+	err := client.Agent().ServiceDeregister(serviceID)
 	if err != nil {
 		log.Printf("consul deregister error: %s", err.Error())
 	}
@@ -56,5 +60,5 @@ func DeRegister(serviceID string) error {
 }
 
 func AgentService() (map[string]*api.AgentService, error) {
-	return consulClient.Agent().Services()
+	return client.Agent().Services()
 }
