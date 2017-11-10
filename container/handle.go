@@ -10,7 +10,8 @@ import (
 )
 
 func EventsHandler(message events.Message) {
-	if message.ID == "" || message.Type != "container" || !checkContainerIgnore(message.From) {
+	log.Printf("event message: %s, %s, %s, %s;\n", message.ID, message.Action, message.From, message.Type)
+	if message.ID == "" || message.Type != "container" || checkContainerIgnore(message.From) {
 		return
 	}
 	log.Printf("event message: %s, %s, %s, %s;\n", message.ID, message.Action, message.From, message.Type)

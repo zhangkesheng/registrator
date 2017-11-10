@@ -14,7 +14,7 @@ func getDefaultConfig() *CommonConf {
 		ConsulInternal:  "10s",
 		WeaveHostCidr:   "192.168.195.253/22",
 		ConsulHttpAddr:  "192.168.33.34:8500",
-		IgnoreContainer: "daocloud,docker,weave",
+		IgnoreContainer: "docker,weave",
 	}
 }
 
