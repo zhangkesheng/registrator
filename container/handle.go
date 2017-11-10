@@ -5,8 +5,8 @@ import (
 	"github.com/zhangkesheng/registrator/weave"
 	"github.com/docker/docker/api/types/events"
 	"github.com/zhangkesheng/registrator/consul"
-	"os"
 	"strings"
+	"github.com/zhangkesheng/registrator/config"
 )
 
 func EventsHandler(message events.Message) {
@@ -40,7 +40,7 @@ func EventsErrorHandler(error error) {
 }
 
 func checkContainerIgnore(from string) bool {
-	envIgnoreContainers := os.Getenv("IGNORE_CONTAINER")
+	envIgnoreContainers := config.CommonCfg.IgnoreContainer
 	if len(envIgnoreContainers) == 0 {
 		return false
 	}

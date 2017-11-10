@@ -3,14 +3,13 @@ package consul
 import (
 	"github.com/hashicorp/consul/api"
 	"fmt"
-	"os"
 	"log"
 	"errors"
+	"github.com/zhangkesheng/registrator/config"
 )
 
 var consulClient, _ = api.NewClient(&api.Config{
-	// TODO use config
-	Address: "192.168.33.34:8500",
+	Address: config.CommonCfg.ConsulHttpAddr,
 })
 
 func Register(consulService ConsulService) error {
@@ -37,7 +36,7 @@ func Register(consulService ConsulService) error {
 		Tags:    tags,
 		Check: &api.AgentServiceCheck{
 			HTTP:     fmt.Sprintf("http://%s:%s", consulService.ServiceIp, consulService.HealthUrl),
-			Interval: os.Getenv("DEFAULT_CONSUL_INTERVAL"),
+			Interval: config.CommonCfg.ConsulInternal,
 		},
 	})
 	if consulError != nil {
