@@ -26,7 +26,7 @@ func Attach(consulService consul.ConsulService) string {
 		cmdResult := cmdResultHandler(out, err)
 		return cmdResult[0]
 	}
-	out, err := exec.Command("weave", "attach", consulService.ServiceID, consulService.ServiceIp).CombinedOutput()
+	out, err := exec.Command("weave", "attach", consulService.ServiceIp, consulService.ServiceID).CombinedOutput()
 	cmdResult := cmdResultHandler(out, err)
 	return cmdResult[0]
 }

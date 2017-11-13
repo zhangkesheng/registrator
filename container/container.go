@@ -34,7 +34,7 @@ func GetConsulService(containerID string) (service consul.ConsulService, err err
 	}
 	if envMap[WEAVE_CIDR] != "" {
 		// check WEAVE_CIDR attach status
-		if !weave.CheckWeaveCIDRAttached(envMap[WEAVE_CIDR]) {
+		if weave.CheckWeaveCIDRAttached(envMap[WEAVE_CIDR]) {
 			return consul.ConsulService{}, errors.New(fmt.Sprintf("WEAVE_CIDR [%s] is attached.", envMap[WEAVE_CIDR]))
 		}
 		serviceIp = envMap[WEAVE_CIDR]
