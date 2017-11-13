@@ -35,7 +35,7 @@ func Register(consulService ConsulService) error {
 	consulError := client.Agent().ServiceRegister(&api.AgentServiceRegistration{
 		ID:      consulService.ServiceID,
 		Name:    consulService.ServiceName,
-		Address: consulService.ServiceID,
+		Address: consulService.ServiceIp,
 		Port:    consulService.ServicePort,
 		Tags:    tags,
 		Check: &api.AgentServiceCheck{
