@@ -15,7 +15,7 @@ func EventsHandler(message events.Message) {
 		return
 	}
 	log.Printf("event message: %s, %s, %s, %s;\n", message.ID, message.Action, message.From, message.Type)
-	if "stop" == message.Action {
+	if "kill" == message.Action {
 		containerIp := weave.Detach(message.ID)
 		log.Printf("weave ip [%s] detach.\n", containerIp)
 		_, err := GetConsulService(message.ID)
